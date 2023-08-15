@@ -65,6 +65,17 @@ class Order(db.Model):
     order_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     total_amount = db.Column(db.Float, nullable=False)
 
+class EditRequest(db.Model):
+    __tablename__ = 'category_request'
+    id = db.Column(db.Integer, primary_key=True)
+    store_manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    request_message = db.Column(db.String(255), nullable=False)
+    is_approved = db.Column(db.Boolean, default=False)
+    store_manager = db.relationship('User', backref='edit_requests', foreign_keys=[store_manager_id])
+    category = db.relationship('Category', backref='edit_requests', foreign_keys=[category_id])
+
+
 class NotFoundError(HTTPException):
     def __init__(self, status_code):
         self.response = make_response('', status_code)

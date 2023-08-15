@@ -131,7 +131,26 @@ class ApproveManagerResource(Resource):
         else:
             return {"message": "Manager not found"}, 404
 
-        
+
+class CategoryRequestResource(Resource):
+    def post(self):
+        request_parser = reqparse.RequestParser()
+        request_parser.add_argument('store_manager_id', type=int, required=True)
+        request_parser.add_argument('category_id', type=int, required=True)
+        request_parser.add_argument('request_message', type=str, required=True)
+        args = request_parser.parse_args()
+
+        store_manager_id = args['store_manager_id']
+        category_id = args['category_id']
+        request_message = args['request_message']
+
+        new_request = CategoryRequestResource(store_manager_id=store_manager_id, category_id=category_id, request_message=request_message)
+        db.session.add(new_request)
+        db.session.commit()
+
+        return {"message": "Edit request submitted successfully"}, 201
+
+
 product_parser = reqparse.RequestParser()
 product_parser.add_argument('name')
 product_parser.add_argument('price', type=float)
