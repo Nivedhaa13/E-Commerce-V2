@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask,render_template
 from application.database import db 
 from application.api import UserResource,ProductAPI,CategoryAPI,CartAPI,ExportAPI
 from flask_cors import CORS
@@ -6,16 +6,24 @@ from flask_restful import Api
 from flask_migrate import Migrate
 from flask_security import Security
 from application.models import User, Role
+from application.cac import cache
 
 from application.api import *
 
 
+config = {
+    "DEBUG": True,          # some Flask specific configs
+    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "CACHE_DEFAULT_TIMEOUT": 300
+}
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SECRET_KEY'] = 'thisisasecretkey'
 app.config['SECURITY_PASSWORD_SALT'] = 'thisisasecretsalt'
 app.config['WTF_CSRF_ENABLED'] = False
+app.config.from_mapping(config)
+
 security = Security(app, user_datastore)
 migrate = Migrate(app, db)
 
@@ -24,6 +32,7 @@ CORS(app)
 
 api = Api(app)
 db.init_app(app)
+cache.init_app(app)
 
 api.add_resource(UserResource, '/user')
 api.add_resource(LoginResource, '/userlogin')
@@ -37,6 +46,13 @@ api.add_resource(OrdersAPI, '/order','/order/<int:user_id>')
 api.add_resource(CategoryRequestResource, '/edit_requests')
 api.add_resource(ApproveEditRequestResource, '/approve_edit_request/<int:request_id>')
 api.add_resource(ExportAPI, '/export')
+
+import time
+@app.route("/")
+@cache.cached(timeout=5)
+def index():
+    time.sleep(10)
+    return "gello"
 
 @app.route('/api/approve_store_manager/<int:user_id>', methods=['POST'])
 @admin_required

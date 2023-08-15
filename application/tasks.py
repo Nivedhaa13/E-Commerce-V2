@@ -11,14 +11,19 @@ import time
 app=Celery('tasks',broker='redis://127.0.0.1:6379')
 app.conf.enable_utc=False
 app.conf.timezone='Asia/Kolkata'
-
+attachments=['application/exports/orders.csv','application/exports/products.csv']
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender,**kwargs):
     sender.add_periodic_task(10.0,add.s(1,2),name='add every 10')
     sender.add_periodic_task(30.0,print_s.s('hello'),name='print every 30')
     sender.add_periodic_task(
-        crontab(hour=7,minute=30,day_of_week=1),
-        send_email.s('gokulakrishnanm1998@gmail.com','test sdsda','hello'),name='send email every monday')
+        crontab(hour=7,minute=30),
+        send_email.s('gokulakrishnanm1998@gmail.com','daily remainder','place your order for the day'),name='send email every monday')
+    # to send every month 1st
+    sender.add_periodic_task(
+        crontab(hour=7,minute=30,day_of_month=1),
+        send_email.s('gokulakrishnanm1998@gmail.com','monthly summary','summary till date',attachments=attachments),name='send email every month')
+    
 
 @app.task
 def add(x,y):

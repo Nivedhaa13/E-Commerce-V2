@@ -12,6 +12,7 @@ from werkzeug.security import check_password_hash,generate_password_hash
 from functools import wraps
 from flask import jsonify
 import datetime
+from .cac import cache
 bcrypt = Bcrypt()
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -488,10 +489,13 @@ orderproduct_response_fields = {
     "total_amount": fields.Float(attribute="total_amount")
 }
 
+
+
 class OrdersAPI(Resource):
     # @marshal_with(orderproduct_response_fields)
+    @cache.cached(timeout=5)
     def get(self,user_id):
-
+        time.sleep(5)
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
         
@@ -553,8 +557,13 @@ from flask import jsonify, Response
 from flask_restful import Resource
 from io import StringIO
 from .export_csv import export_orders_to_csv, export_products_to_csv
+# from .cac import cache
+
+import time
 class ExportAPI(Resource):
+    @cache.cached(timeout=5)
     def get(self):
+        time.sleep(5)
         orders = Order.query.all()
         products=Product.query.all()
         # lets delete the previous csv files
