@@ -1,7 +1,7 @@
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_security import SQLAlchemyUserDatastore
 from application.database import db
-from application.models import User, Role,Product, Order, BusinessValidationError, NotFoundError, Category, Cart
+from application.models import User, Role,Product, Order, EditRequest, BusinessValidationError, NotFoundError, Category, Cart
 from flask_bcrypt import Bcrypt
 from werkzeug.exceptions import Conflict
 from sqlalchemy.exc import IntegrityError
@@ -133,6 +133,21 @@ class ApproveManagerResource(Resource):
 
 
 class CategoryRequestResource(Resource):
+    def get(self):
+        edit_requests = EditRequest.query.all()
+        result = [
+            {
+                'id': request.id,
+                'store_manager_id': request.store_manager_id,
+                'category_id': request.category_id,
+                'request_message': request.request_message,
+                'is_approved': request.is_approved,
+            }
+            for request in edit_requests
+        ]
+        return result, 200
+    
+    
     def post(self):
         request_parser = reqparse.RequestParser()
         request_parser.add_argument('store_manager_id', type=int, required=True)
@@ -144,11 +159,24 @@ class CategoryRequestResource(Resource):
         category_id = args['category_id']
         request_message = args['request_message']
 
-        new_request = CategoryRequestResource(store_manager_id=store_manager_id, category_id=category_id, request_message=request_message)
+        new_request = EditRequest(store_manager_id=store_manager_id, category_id=category_id, request_message=request_message)
         db.session.add(new_request)
         db.session.commit()
 
         return {"message": "Edit request submitted successfully"}, 201
+    
+class ApproveEditRequestResource(Resource):
+    def post(self, request_id):
+        try:
+            edit_request = EditRequest.query.get(request_id)
+            if edit_request:
+                edit_request.is_approved = True
+                db.session.commit()
+                return {"message": "Edit request approved successfully"}, 200
+            else:
+                return {"message": "Edit request not found"}, 404
+        except Exception as e:
+            return {"message": str(e)}, 500
 
 
 product_parser = reqparse.RequestParser()
