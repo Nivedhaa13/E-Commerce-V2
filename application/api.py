@@ -366,10 +366,10 @@ class CartAPI(Resource):
         if cart_id is None:
             all_cart_items = Cart.query.all()
             return all_cart_items
-        for cart_item in cart_item:
-                product = Product.query.get(cart_item.product_id)
-                total_amount += product.price * cart_item.quantity
-                return {"total_amount": total_amount}
+            # for cart_item in cart_item:
+            #         product = Product.query.get(cart_item.product_id)
+            #         total_amount += product.price * cart_item.quantity
+            #         return {"total_amount": total_amount}
         else:
             cart_item = Cart.query.get(cart_id)
             if cart_item:
@@ -427,7 +427,7 @@ class CartAPI(Resource):
         return new_cart_item, 201
 
 order_parser = reqparse.RequestParser()
-order_parser.add_argument('user_id', type=int, required=True)
+order_parser.add_argument('user_id', type=int, required=True,location="form")
 
 order_response_fields = {
     "id": fields.Integer(attribute="id"),
@@ -440,12 +440,10 @@ orderproduct_response_fields = {
 }
 
 class OrdersAPI(Resource):
-    @marshal_with(orderproduct_response_fields)
-    def get(self):
-        args = order_parser.parse_args()
+    # @marshal_with(orderproduct_response_fields)
+    def get(self,user_id):
         
 
-        user_id = args.get('user_id')
         
 
         

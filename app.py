@@ -33,7 +33,7 @@ api.add_resource(ApproveManagerResource, '/approve_manager/<int:manager_id>')
 api.add_resource(ProductAPI, '/products', '/products/<int:product_id>')
 api.add_resource(CategoryAPI, '/categories', '/categories/<int:category_id>')
 api.add_resource(CartAPI, '/carts', '/carts/<int:cart_id>')
-api.add_resource(OrdersAPI, '/order')
+api.add_resource(OrdersAPI, '/order','/order/<int:user_id>')
 
 @app.route('/api/approve_store_manager/<int:user_id>', methods=['POST'])
 @admin_required
