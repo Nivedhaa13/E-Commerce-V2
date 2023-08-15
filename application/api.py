@@ -427,10 +427,10 @@ class CartAPI(Resource):
         return new_cart_item, 201
 
 order_parser = reqparse.RequestParser()
-order_parser.add_argument('user_id', type=int, required=True,location="form")
+order_parser.add_argument('user_id', type=int, required=True)
 
 order_response_fields = {
-    "id": fields.Integer(attribute="id"),
+    # "id": fields.Integer(attribute="id"),
     "user_id": fields.Integer(attribute="user_id"),
     "order_date": fields.DateTime(attribute="order_date"),
     "total_amount": fields.Float(attribute="total_amount")
@@ -442,18 +442,14 @@ orderproduct_response_fields = {
 class OrdersAPI(Resource):
     # @marshal_with(orderproduct_response_fields)
     def get(self,user_id):
-        
 
-        
-
-        
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
         
         for cart_item in cart_items:
             product = Product.query.get(cart_item.product_id)
             total_amount += product.price * cart_item.quantity
-        
+        # for order in order
         return jsonify({"total_amount": total_amount})
 
 
@@ -461,7 +457,7 @@ class OrdersAPI(Resource):
     def post(self):
         args = order_parser.parse_args()
         user_id = args.get('user_id')
-        
+        print("ASsa")
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
         
@@ -471,7 +467,7 @@ class OrdersAPI(Resource):
         
         new_order = Order(
             user_id=user_id,
-            order_date=datetime.utcnow(), 
+            order_date=datetime.datetime.utcnow(), 
             total_amount=total_amount
         )
         db.session.add(new_order)
