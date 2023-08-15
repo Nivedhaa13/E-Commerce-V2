@@ -202,6 +202,7 @@ product_response_fields = {
 class ProductAPI(Resource):
     @marshal_with(product_response_fields)
     #@roles_required('store manager') 
+    @cache.cached(timeout=5)
     def get(self, product_id=None):
         if product_id is None:
             all_products = Product.query.all()
@@ -330,6 +331,7 @@ category_response_fields = {
 class CategoryAPI(Resource):
     @marshal_with(category_response_fields)
     #@admin_required
+    @cache.cached(timeout=5)
     def get(self, category_id=None):
         if category_id is None:
             all_categories = Category.query.all()
@@ -411,6 +413,7 @@ cart_response_fields = {
 
 class CartAPI(Resource):
     @marshal_with(cart_response_fields)
+    @cache.cached(timeout=5)
     def get(self, cart_id=None):
         total_amount=0
         if cart_id is None:
@@ -539,6 +542,7 @@ class OrdersAPI(Resource):
 
 class ExportAPI(Resource):
     # to export order product and cart items
+
     def get(self):
         orders=Order.query.all()
         cart_items=Cart.query.all()
