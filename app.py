@@ -1,6 +1,6 @@
 from flask import Flask
 from application.database import db 
-from application.api import UserResource,ProductAPI,CategoryAPI,CartAPI
+from application.api import UserResource,ProductAPI,CategoryAPI,CartAPI,ExportAPI
 from flask_cors import CORS
 from flask_restful import Api
 from flask_migrate import Migrate
@@ -36,6 +36,7 @@ api.add_resource(CartAPI, '/carts', '/carts/<int:cart_id>')
 api.add_resource(OrdersAPI, '/order','/order/<int:user_id>')
 api.add_resource(CategoryRequestResource, '/edit_requests')
 api.add_resource(ApproveEditRequestResource, '/approve_edit_request/<int:request_id>')
+api.add_resource(ExportAPI, '/export')
 
 @app.route('/api/approve_store_manager/<int:user_id>', methods=['POST'])
 @admin_required

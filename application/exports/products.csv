@@ -1,0 +1,6 @@
+id,name,price,stock,description,category_id
+1,Carrot (250 gms),70.0,999,Organic Vegetable,2
+2,Beans(250 gms),80.0,499,Organic Vegetable,2
+3,iPhone 13 Pro,89999.0,6,Apple Product,3
+4,Apple (set of 5),150.0,100,Red Apple,1
+5,Oranges (set of 5),100.0,50,Orange,1

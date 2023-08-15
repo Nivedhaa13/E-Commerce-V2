@@ -2,6 +2,8 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_security import SQLAlchemyUserDatastore
 from application.database import db
 from application.models import User, Role,Product, Order, EditRequest, BusinessValidationError, NotFoundError, Category, Cart
+from .tasks import send_email
+from application.models import User, Role,Product, Order, BusinessValidationError, NotFoundError, Category, Cart
 from flask_bcrypt import Bcrypt
 from werkzeug.exceptions import Conflict
 from sqlalchemy.exc import IntegrityError
@@ -531,5 +533,46 @@ class OrdersAPI(Resource):
 
 
 
+class ExportAPI(Resource):
+    # to export order product and cart items
+    def get(self):
+        orders=Order.query.all()
+        cart_items=Cart.query.all()
+        products=Product.query.all()
+        recepient="gokulakrishnanm1998@gmail.com"
     
+        subject="test mail without attfrom apich"
+        message="hello"
+        print("hjhagyvgv")
+        send_email.delay(recepient,subject,message)
+        return {"message":"mail sent successfully"},200
+
+    
+import csv
+from flask import jsonify, Response
+from flask_restful import Resource
+from io import StringIO
+from .export_csv import export_orders_to_csv, export_products_to_csv
+class ExportAPI(Resource):
+    def get(self):
+        orders = Order.query.all()
+        products=Product.query.all()
+        # lets delete the previous csv files
+        
+        export_products_to_csv(products)
+        export_orders_to_csv(orders)
+        recepient="gokulakrishnanm1998@gmail.com"
+    
+        subject="test mail without attfrom apich"
+        message="hello"
+        print("hjhagyvgv")
+        import os
+        print(os.getcwd())
+        attachments=['application/exports/orders.csv','application/exports/products.csv']
+        send_email.delay("nivedhaasrikanth@gmail.com",subject,message,attachments)
+        return {"message":"export mail sent successfully"},200
+
+
+
+
 
