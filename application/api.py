@@ -13,6 +13,15 @@ from functools import wraps
 from flask import jsonify
 import datetime
 from .cac import cache
+import csv
+from flask import jsonify, Response
+from flask_restful import Resource
+from io import StringIO
+from .export_csv import export_orders_to_csv, export_products_to_csv
+# from .cac import cache
+
+import time
+
 bcrypt = Bcrypt()
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -113,6 +122,7 @@ class StoreManagerRegistrationResource(Resource):
             return {"signup": "failed"}, 406
         
 class UnapprovedManagersResource(Resource):
+    @cache.memoize(50)
     def get(self):
         unapproved_managers = User.query.filter(User.is_approved == False, User.roles.any(Role.name == 'store manager')).all()
         unapproved_managers_data = [
@@ -136,6 +146,7 @@ class ApproveManagerResource(Resource):
 
 
 class CategoryRequestResource(Resource):
+    @cache.memoize(50)
     def get(self):
         edit_requests = EditRequest.query.all()
         result = [
@@ -513,7 +524,6 @@ class OrdersAPI(Resource):
     def post(self):
         args = order_parser.parse_args()
         user_id = args.get('user_id')
-        print("ASsa")
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
         
@@ -540,30 +550,8 @@ class OrdersAPI(Resource):
 
 
 
-class ExportAPI(Resource):
-    # to export order product and cart items
-
-    def get(self):
-        orders=Order.query.all()
-        cart_items=Cart.query.all()
-        products=Product.query.all()
-        recepient="gokulakrishnanm1998@gmail.com"
     
-        subject="test mail without attfrom apich"
-        message="hello"
-        print("hjhagyvgv")
-        send_email.delay(recepient,subject,message)
-        return {"message":"mail sent successfully"},200
 
-    
-import csv
-from flask import jsonify, Response
-from flask_restful import Resource
-from io import StringIO
-from .export_csv import export_orders_to_csv, export_products_to_csv
-# from .cac import cache
-
-import time
 class ExportAPI(Resource):
     @cache.cached(timeout=5)
     def get(self):
@@ -574,15 +562,14 @@ class ExportAPI(Resource):
         
         export_products_to_csv(products)
         export_orders_to_csv(orders)
-        recepient="gokulakrishnanm1998@gmail.com"
+        recepient="nivedhaasrikanth@gmail.com"
     
         subject="test mail without attfrom apich"
         message="hello"
-        print("hjhagyvgv")
-        import os
-        print(os.getcwd())
+ 
+
         attachments=['application/exports/orders.csv','application/exports/products.csv']
-        send_email.delay("nivedhaasrikanth@gmail.com",subject,message,attachments)
+        send_email.delay(recepient,subject,message,attachments)
         return {"message":"export mail sent successfully"},200
 
 

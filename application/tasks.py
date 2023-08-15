@@ -18,11 +18,11 @@ def setup_periodic_tasks(sender,**kwargs):
     sender.add_periodic_task(30.0,print_s.s('hello'),name='print every 30')
     sender.add_periodic_task(
         crontab(hour=7,minute=30),
-        send_email.s('gokulakrishnanm1998@gmail.com','daily remainder','place your order for the day'),name='send email every monday')
+        send_email.s('nivedhaasrikanth@gmail.com','daily remainder','place your order for the day'),name='send email every monday')
     # to send every month 1st
     sender.add_periodic_task(
         crontab(hour=7,minute=30,day_of_month=1),
-        send_email.s('gokulakrishnanm1998@gmail.com','monthly summary','summary till date',attachments=attachments),name='send email every month')
+        send_email.s('nivedhaasrikanth@gmail.com','monthly summary','summary till date',attachments=attachments),name='send email every month')
     
 
 @app.task
