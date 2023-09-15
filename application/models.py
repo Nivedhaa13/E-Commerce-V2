@@ -33,6 +33,11 @@ class Role(db.Model, RoleMixin):
     name = db.Column(db.String(40))
     description = db.Column(db.String(255))
 
+class ActivityLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    visit_date = db.Column(db.DateTime, nullable=False)
+
 class Category(db.Model):
     __tablename__ = 'category'
     id = db.Column(db.Integer, primary_key=True)
@@ -64,12 +69,23 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     order_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     total_amount = db.Column(db.Float, nullable=False)
+    order_items = db.relationship('User_Order', backref='order', cascade='all, delete-orphan')
+    
+class User_Order(db.Model):
+    __tablename__ = 'User_Order'
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    product_price = db.Column(db.Float, nullable=False)
+    product = db.relationship('Product', backref='User_Order', primaryjoin='User_Order.product_id == Product.id')
+
 
 class EditRequest(db.Model):
     __tablename__ = 'category_request'
     id = db.Column(db.Integer, primary_key=True)
     store_manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     request_message = db.Column(db.String(255), nullable=False)
     is_approved = db.Column(db.Boolean, default=False)
     store_manager = db.relationship('User', backref='edit_requests', foreign_keys=[store_manager_id])

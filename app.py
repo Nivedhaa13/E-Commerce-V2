@@ -1,4 +1,4 @@
-from flask import Flask,render_template
+from flask import Flask
 from application.database import db 
 from application.api import UserResource,ProductAPI,CategoryAPI,CartAPI,ExportAPI
 from flask_cors import CORS
@@ -7,13 +7,14 @@ from flask_migrate import Migrate
 from flask_security import Security
 from application.models import User, Role
 from application.cac import cache
-
+#from application.celery import make_celery
 from application.api import *
+from application.tasks import *
 
 
 config = {
-    "DEBUG": True,          # some Flask specific configs
-    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "DEBUG": True,  
+    "CACHE_TYPE": "SimpleCache", 
     "CACHE_DEFAULT_TIMEOUT": 300
 }
 
@@ -35,7 +36,8 @@ db.init_app(app)
 cache.init_app(app)
 
 api.add_resource(UserResource, '/user')
-api.add_resource(LoginResource, '/userlogin')
+api.add_resource(LoginResource, '/managerlogin')
+api.add_resource(UserLoginResource, '/userlogin')
 api.add_resource(StoreManagerRegistrationResource, '/store_manager_register')
 api.add_resource(UnapprovedManagersResource, '/get_unapproved_managers')
 api.add_resource(ApproveManagerResource, '/approve_manager/<int:manager_id>')
@@ -45,14 +47,15 @@ api.add_resource(CartAPI, '/carts', '/carts/<int:cart_id>')
 api.add_resource(OrdersAPI, '/order','/order/<int:user_id>')
 api.add_resource(CategoryRequestResource, '/edit_requests')
 api.add_resource(ApproveEditRequestResource, '/approve_edit_request/<int:request_id>')
+api.add_resource(AddCategoryRequestResource, '/add_new_category_request')
 api.add_resource(ExportAPI, '/export')
 
 import time
 @app.route("/")
 @cache.cached(timeout=5)
 def index():
-    time.sleep(10)
-    return "gello"
+    #time.sleep(10)
+    return "hello"
 
 @app.route('/api/approve_store_manager/<int:user_id>', methods=['POST'])
 @admin_required
@@ -64,6 +67,13 @@ def approve_store_manager(user_id):
         return {"message": "Store manager approved"}, 200
     return {"message": "User not found or not a store manager"}, 404
 
+app.config.update(CELERY_CONFIG={
+    'broker_url': 'redis://localhost:6379/2',
+    'result_backend': 'redis://localhost:6379/2',
+    'enable_utc': False
+})
+
+#celery = make_celery(app)
 
 with app.app_context():
     db.create_all()
@@ -86,7 +96,7 @@ with app.app_context():
     admin_user = User.query.filter_by(username='admin').first()
     if not admin_user:
         hashed_password = generate_password_hash('admin')
-        admin_user = User(username='admin', email='admin@example.com', address="random", password=hashed_password ,fs_uniquifier='admin', active=True,is_approved=True)
+        admin_user = User(username='admin', email='admin@gmail.com', address="random", password=hashed_password ,fs_uniquifier='admin', active=True,is_approved=True)
         admin_user.roles.append(admin_role)
         db.session.add(admin_user)
 

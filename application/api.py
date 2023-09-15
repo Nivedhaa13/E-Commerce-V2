@@ -2,8 +2,8 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_security import SQLAlchemyUserDatastore
 from application.database import db
 from application.models import User, Role,Product, Order, EditRequest, BusinessValidationError, NotFoundError, Category, Cart
-from .tasks import send_email
-from application.models import User, Role,Product, Order, BusinessValidationError, NotFoundError, Category, Cart
+#from .tasks import send_email
+from application.models import User, User_Order, roles_users, Role,Product, Order, BusinessValidationError, NotFoundError, Category, Cart
 from flask_bcrypt import Bcrypt
 from werkzeug.exceptions import Conflict
 from sqlalchemy.exc import IntegrityError
@@ -13,12 +13,12 @@ from functools import wraps
 from flask import jsonify
 import datetime
 from .cac import cache
-import csv
 from flask import jsonify, Response
 from flask_restful import Resource
 from io import StringIO
-from .export_csv import export_orders_to_csv, export_products_to_csv
+from .export_csv import export_orders_to_csv, export_products_to_csv,export_user_order_to_csv
 # from .cac import cache
+import json
 
 import time
 
@@ -69,6 +69,30 @@ class UserResource(Resource):
         except IntegrityError:
             return {"signup": "failed"}, 406
         
+class UserLoginResource(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', required=True) 
+        parser.add_argument('password', required=True)
+        args = parser.parse_args()
+
+        user = User.query.filter_by(email=args['email']).first()  
+
+        if user and check_password_hash(user.password, args['password']):
+            user_roles = db.session.query(Role.name).join(roles_users).filter(roles_users.c.user_id == user.id).all()
+
+            roles = [role[0] for role in user_roles]
+                
+            return {
+                    "fs_uniquifier": user.fs_uniquifier,
+                    "user_id": user.id,
+                    "message": "Login successful",
+                    "is_approved": user.is_approved,
+                    "roles": roles 
+                }, 200
+        else:
+            return {"message": "Invalid email or password"}, 401
+
 class LoginResource(Resource):
     def post(self):
         parser = reqparse.RequestParser()
@@ -80,16 +104,21 @@ class LoginResource(Resource):
 
         if user and check_password_hash(user.password, args['password']):
             if user.is_approved:
+                user_roles = db.session.query(Role.name).join(roles_users).filter(roles_users.c.user_id == user.id).all()
+                roles = [role[0] for role in user_roles]
                 return {
                     "fs_uniquifier": user.fs_uniquifier,
                     "user_id": user.id,
                     "message": "Login successful",
-                    "is_approved": user.is_approved
+                    "is_approved": user.is_approved,
+                    "roles": roles
                 }, 200
             else:
                 return {"message": "Account not yet approved. Please wait for approval."}, 401
         else:
             return {"message": "Invalid email or password"}, 401
+
+
 
 
 
@@ -122,7 +151,7 @@ class StoreManagerRegistrationResource(Resource):
             return {"signup": "failed"}, 406
         
 class UnapprovedManagersResource(Resource):
-    @cache.memoize(50)
+    #@cache.memoize(50)
     def get(self):
         unapproved_managers = User.query.filter(User.is_approved == False, User.roles.any(Role.name == 'store manager')).all()
         unapproved_managers_data = [
@@ -146,7 +175,7 @@ class ApproveManagerResource(Resource):
 
 
 class CategoryRequestResource(Resource):
-    @cache.memoize(50)
+    #@cache.memoize(50)
     def get(self):
         edit_requests = EditRequest.query.all()
         result = [
@@ -178,6 +207,24 @@ class CategoryRequestResource(Resource):
         db.session.commit()
 
         return {"message": "Edit request submitted successfully"}, 201
+    
+class AddCategoryRequestResource(Resource):
+    def post(self):
+        request_parser = reqparse.RequestParser()
+        request_parser.add_argument('store_manager_id', type=int, required=True)
+        request_parser.add_argument('request_message', type=str, required=True)
+        args = request_parser.parse_args()
+
+        store_manager_id = args['store_manager_id']
+        request_message = args['request_message']
+        new_category_request = EditRequest(
+            store_manager_id=store_manager_id,
+            category_id=None, 
+            request_message=request_message,
+        )
+        db.session.add(new_category_request)
+        db.session.commit()
+
     
 class ApproveEditRequestResource(Resource):
     def post(self, request_id):
@@ -212,8 +259,7 @@ product_response_fields = {
 
 class ProductAPI(Resource):
     @marshal_with(product_response_fields)
-    #@roles_required('store manager') 
-    @cache.cached(timeout=5)
+    #@cache.cached(timeout=5)
     def get(self, product_id=None):
         if product_id is None:
             all_products = Product.query.all()
@@ -224,7 +270,7 @@ class ProductAPI(Resource):
                 return product
             else:
                 raise NotFoundError(status_code=404)
-    #@roles_required('store manager') 
+    
     def delete(self, product_id):
         product_exist = db.session.query(
             Product).filter(Product.id == product_id).first()
@@ -237,7 +283,6 @@ class ProductAPI(Resource):
         if product_exist is None:
             raise NotFoundError(status_code=404)
     @marshal_with(product_response_fields)
-    #@roles_required('store manager') 
     def put(self, product_id):
         args = product_parser.parse_args()
         product_name = args.get('name', None)  
@@ -284,7 +329,6 @@ class ProductAPI(Resource):
 
 
     @marshal_with(product_response_fields)
-    #@roles_required('store manager') 
     def post(self):
         args = product_parser.parse_args()
         product_name = args.get('name', None)  
@@ -341,8 +385,7 @@ category_response_fields = {
 
 class CategoryAPI(Resource):
     @marshal_with(category_response_fields)
-    #@admin_required
-    @cache.cached(timeout=5)
+    #@cache.cached(timeout=5)
     def get(self, category_id=None):
         if category_id is None:
             all_categories = Category.query.all()
@@ -353,8 +396,7 @@ class CategoryAPI(Resource):
                 return category
             else:
                 raise NotFoundError(status_code=404)
-            
-    #@admin_required
+
     def delete(self, category_id):
         category_exist = db.session.query(
             Category).filter(Category.id == category_id).first()
@@ -368,7 +410,6 @@ class CategoryAPI(Resource):
             raise NotFoundError(status_code=404)
 
     @marshal_with(category_response_fields)
-    #@admin_required
     def put(self, category_id):
         args = category_parser.parse_args()
         category_name = args.get('name', None)
@@ -389,7 +430,6 @@ class CategoryAPI(Resource):
         return category
 
     @marshal_with(category_response_fields)
-    #@admin_required
     def post(self):
         args = category_parser.parse_args()
         category_name = args.get('name', None)
@@ -424,16 +464,12 @@ cart_response_fields = {
 
 class CartAPI(Resource):
     @marshal_with(cart_response_fields)
-    @cache.cached(timeout=5)
+    #@cache.cached(timeout=5)
     def get(self, cart_id=None):
         total_amount=0
         if cart_id is None:
             all_cart_items = Cart.query.all()
             return all_cart_items
-            # for cart_item in cart_item:
-            #         product = Product.query.get(cart_item.product_id)
-            #         total_amount += product.price * cart_item.quantity
-            #         return {"total_amount": total_amount}
         else:
             cart_item = Cart.query.get(cart_id)
             if cart_item:
@@ -506,10 +542,9 @@ orderproduct_response_fields = {
 
 
 class OrdersAPI(Resource):
-    # @marshal_with(orderproduct_response_fields)
-    @cache.cached(timeout=5)
+    #@cache.cached(timeout=5)
     def get(self,user_id):
-        time.sleep(5)
+        #time.sleep(5)
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
         
@@ -526,51 +561,69 @@ class OrdersAPI(Resource):
         user_id = args.get('user_id')
         cart_items = Cart.query.filter_by(user_id=user_id).all()
         total_amount = 0
-        
+
         for cart_item in cart_items:
             product = Product.query.get(cart_item.product_id)
             total_amount += product.price * cart_item.quantity
-        
+
         new_order = Order(
             user_id=user_id,
-            order_date=datetime.datetime.utcnow(), 
+            order_date=datetime.datetime.utcnow(),
             total_amount=total_amount
         )
         db.session.add(new_order)
         db.session.commit()
-        
+
         for cart_item in cart_items:
             product = Product.query.get(cart_item.product_id)
+
+            new_order_item = User_Order(
+                order_id=new_order.id,  
+                product_id=product.id,
+                quantity=cart_item.quantity,
+                product_price=product.price
+            )
+            db.session.add(new_order_item)
             product.stock -= cart_item.quantity
             db.session.delete(cart_item)
-            
+
         db.session.commit()
-        
+
         return new_order, 201
 
 
-
-    
-
 class ExportAPI(Resource):
-    @cache.cached(timeout=5)
     def get(self):
-        time.sleep(5)
-        orders = Order.query.all()
-        products=Product.query.all()
-        # lets delete the previous csv files
-        
-        export_products_to_csv(products)
-        export_orders_to_csv(orders)
-        recepient="nivedhaasrikanth@gmail.com"
-    
-        subject="test mail without attfrom apich"
-        message="hello"
- 
+        try:
+            products = Product.query.all()
+            orders = Order.query.all()
+            user_orders = User_Order.query.all()
 
-        attachments=['application/exports/orders.csv','application/exports/products.csv']
-        send_email.delay(recepient,subject,message,attachments)
-        return {"message":"export mail sent successfully"},200
+            export_products_to_csv(products)
+            export_orders_to_csv(orders)
+            export_user_order_to_csv(user_orders)
+
+            response_data = {"message": "CSV export completed."}
+            return Response(json.dumps(response_data), status=200, content_type="application/json")
+
+        except Exception as e:
+            response_data = {"message": f"Error: {str(e)}"}
+            return Response(json.dumps(response_data), status=500, content_type="application/json")
+    def post(self):
+        try:
+            products = Product.query.all()
+            orders = Order.query.all()
+            user_orders = User_Order.query.all()
+
+            export_products_to_csv(products)
+            export_orders_to_csv(orders)
+            export_user_order_to_csv(user_orders)
+
+            return jsonify({"message": "CSV export completed."}), 200
+        except Exception as e:
+            return jsonify({"message": f"Error: {str(e)}"}), 500
+
+    
 
 
 

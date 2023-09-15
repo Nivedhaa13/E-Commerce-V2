@@ -1,5 +1,4 @@
 import csv
-  # Import your model classes
 
 def export_products_to_csv(products):
     with open('application/exports/products.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -16,6 +15,7 @@ def export_products_to_csv(products):
                 'description': product.description,
                 'category_id': product.category_id
             })
+        print("Exporting products to CSV...")
 
 def export_orders_to_csv(orders):
     with open('application/exports/orders.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -31,4 +31,18 @@ def export_orders_to_csv(orders):
                 'total_amount': order.total_amount
             })
 
-# Retrieve data using the queries
+def export_user_order_to_csv(User_Order):
+
+    with open('application/exports/user_order.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['id', 'order_id', 'product_id', 'quantity', 'product_price']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for item in User_Order:
+            writer.writerow({
+                'id': item.id,
+                'order_id': item.order_id,
+                'product_id': item.product_id,
+                'quantity': item.quantity,
+                'product_price': item.product_price,
+            })
