@@ -1,4 +1,4 @@
-from celery import Celery
+from .workers import celery
 from celery.schedules import crontab  
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -6,40 +6,77 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import os
 import logging
+from .database import *
+from .models import *
+from datetime import datetime, timedelta
+from .mail import format_message, send_email
+from jinja2 import Template
+import pdfkit
 
 
-
-app=Celery('tasks',broker='redis://127.0.0.1:6379')
-app.conf.enable_utc=False
-app.conf.timezone='Asia/Kolkata'
+@celery.on_after_finalize.connect
+def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(crontab(hour=7,minute=30,day_of_month=1), user_engagment.s(), name='Monthly Report')
+    sender.add_periodic_task(crontab(minute=0, hour=0), daily_reminder.s(), name='daily reminders')
 
 attachments=['./application/exports/orders.csv','./application/exports/products.csv','./application/exports/User_Order.csv']
-print(os.getcwd())
-print("Hello Gokul")
-@app.on_after_configure.connect
-def setup_periodic_tasks(sender,**kwargs):
-    sender.add_periodic_task(10.0,add.s(1,2),name='add every 10')
-    sender.add_periodic_task(30.0,print_s.s('hello'),name='print every 30')
-    sender.add_periodic_task(
-        crontab(hour=7,minute=30),
-        send_email.s('nivedhaasrikanth@gmail.com','daily remainder','place your order for the day'),name='send email every monday')
-    
-    sender.add_periodic_task(
-        crontab(hour=7,minute=30,day_of_month=1),
-        send_email.s('nivedhaasrikanth@gmail.com','monthly summary','summary till date',attachments=attachments),name='send email every month')
-    
 
-@app.task
-def add(x,y):
-    print(x+y)
-    return x+y
 
-@app.task
-def print_s(s):
-    print(s)
-    return s
+@celery.task()
+def daily_reminder():
+    users = User.query.all()
+    for user in users:
+        last_activity = ActivityLog.query.filter_by(user_id=user.id).order_by(ActivityLog.visit_date.desc()).first()
 
-@app.task
+        if last_activity is None or (datetime.utcnow() - last_activity.visit_date) >= timedelta(days=1):
+            data = {
+                'username':user.username
+            }
+            message= format_message('frontend/daily_reminder.html',data=data)
+            send_email(
+                user.email,
+                subject='Daily Reminder',
+                message=message,
+                content="html",
+            )
+
+@celery.task()
+def user_engagment():
+    users = User.query.all()
+    for user in users:
+        result = monthly_report.delay(user.id)
+
+
+def format_report(template_file,user,month,item,year):
+    with open(template_file) as file:
+        template = Template(file.read())
+        return template.render(user = user,month = month, item = item ,year=year)
+
+@celery.task()
+def monthly_report(user_id):
+    user = User.query.filter_by(id = user_id).first()
+
+    now = datetime.now()
+    month = now.month
+    year = now.year
+
+    filtered_products = []
+    for item in user.order:
+        if item.order_date.month == month and item.order_date.year == year:
+            filtered_products.append(item)
+
+    file_html = format_report('frontend/monthly_report.html',user = user,month = month, item = filtered_products,year=year)
+    filename = f'{user.username}_{month}_{year}.pdf'
+    pdfkit.from_file(file_html, filename)
+    send_email(
+        user.email,
+        subject=f"Monthly Engagement Report - {month}/{year}",
+        message=file_html,
+        content="html",
+        attachments=[filename]
+    )
+
+@celery.task
 def send_email(recepient, subject, message, attachments=None):
     msg = MIMEMultipart()
     sender = "nivedhaasrikanth@gmail.com"

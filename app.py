@@ -7,9 +7,12 @@ from flask_migrate import Migrate
 from flask_security import Security
 from application.models import User, Role
 from application.cac import cache
-#from application.celery import make_celery
 from application.api import *
 from application.tasks import *
+from application.workers import *
+
+
+
 
 
 config = {
@@ -33,7 +36,7 @@ CORS(app)
 
 api = Api(app)
 db.init_app(app)
-cache.init_app(app)
+#cache.init_app(app)
 
 api.add_resource(UserResource, '/user')
 api.add_resource(LoginResource, '/managerlogin')
