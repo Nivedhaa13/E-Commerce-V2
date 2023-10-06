@@ -1,11 +1,11 @@
-from application.database import *
+from .database import *
 from flask_security import UserMixin, RoleMixin
 from datetime import datetime 
 from flask_wtf import FlaskForm
 from wtforms import StringField,SubmitField, IntegerField,HiddenField,SelectField,FieldList
 from wtforms.validators import InputRequired, Length, DataRequired,Email
 from datetime import datetime
-from application.database import db
+from .database import db
 from flask import make_response
 from werkzeug.exceptions import HTTPException
 import json
@@ -106,4 +106,3 @@ class BusinessValidationError(HTTPException):
 
 
 
-  

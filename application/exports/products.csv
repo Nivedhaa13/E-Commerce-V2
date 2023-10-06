@@ -1,7 +1,7 @@
 id,name,price,stock,description,category_id
-1,Apple (set of 5),200.0,16,Red Apple,2
+1,Apple (set of 5),200.0,12,Red Apple,2
 2,Banana (set of 5),50.0,196,raw,2
-3,Carrot (250 gms),50.0,96,organic,3
+3,Carrot (250 gms),50.0,94,organic,3
 4,iPhone 13 pro,80000.0,4,Apple Product,5
 5,Airpods Pro (2nd Gen),40000.0,5,Apple Product,5
-6,Adult Beagle Dog Food (5 Kg),2500.0,25,pet food,4
+6,Adult Beagle Dog Food (5 Kg),2500.0,24,pet food,4
